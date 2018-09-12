@@ -29,10 +29,10 @@ import akka.util.Timeout
 
 //#user-routes-class
 trait UserRoutes extends JsonSupport {
-  val filenameRm = System.getProperty("user.home") + ".rm"
+  val filenameRm = System.getProperty("user.home") + "/.rm"
   val tagEQ = "EQ:YES"
   val rmLinesEq = try {
-    Source.fromFile(filenameRm).getLines.toArray
+    Source.fromFile(filenameRm).getLines.toArray filter (_.mkString == tagEQ)
   } catch {
     case e: Exception => Array[String]()
   }
@@ -118,7 +118,7 @@ trait UserRoutes extends JsonSupport {
                 (userRegistryActor ? GetUsers).mapTo[Users]
 */
               val vol: String = musicVol(0) + ", " + musicVol(1) + ", " + musicVol(2) + ", " + jinglVol(1) + ", " + jinglVol(2) + volsOfDay + ", " + eq
-              val html: String = "<html><head><title>AsmixRemote</title><style>input[type=range] { -webkit-appearance: slider-vertical; width: 20px; height: 175px; padding: 0 5px; } div{display:inline-block;}</style></head><body><div style=\"display:block;\"><label for=\"userPassword\">Пароль: </label><input id=\"userPassword\" type=\"password\"></div><div id=\"main\"></div><div style=\"display:inline-block;\"></div></div><script>function setVol() { var xhr = new XMLHttpRequest(); xhr.open(\"POST\", \"\"); xhr.setRequestHeader(\"Content-Type\", \"application/json\"); xhr.onreadystatechange = function () { var DONE = 4; var OK = 200; if (xhr.readyState === DONE) { if (xhr.status === OK) { for(var i = 0; i < 39; i++){ var responseSplit =  xhr.responseText.substring(8).replace('\"}', ' ').split(':'); document.getElementById('svol' + i).innerHTML = responseSplit[i]} } } }; var volValues=''; for(var i = 0; i < 39; i++){ \n volValues += document.getElementById('vol' + i).value + ':';}; xhr.send('{\"name\": \"' + volValues.substring(0, volValues.length-1) + '\", \"age\": ' + document.getElementById('vol0').value + ', \"pass\": \"' + document.getElementById('userPassword').value + '\"}'); }; window.onload = function(){ var vol = [" + vol + "]; var min = 0; var max = 100; var readOnly = 'disabled'; var container = document.getElementById(\"main\"); for(var i = 0; i < vol.length; i++){ var q = document.createElement('div'); q.innerHTML ='<input  type=\"range\" oninput=\"setVol()\" id=\"vol' + i + '\" name=\"vol' + i + '\" min=\"' + min + '\" max=\"' + max + '\" value=\"' + vol[i] + '\" ' + readOnly + '><span id=\"svol' + i + '\" style=\"display: block;\">' + vol[i] + '</span>'; container.appendChild(q);  if ( i == 0 || i == 4 || i == 28){var tail = '<div style=\"margin:0 10\"></div>'; if (i==28) {min = -12; max = 12; readOnly = ''}; var tailElement = document.createElement('div'); tailElement.innerHTML = tail; container.appendChild(tailElement);}; } document.getElementById('vol0').disabled = false; }; </script></body></html>"
+              val html: String = "<html><head><title>AsmixRemote</title><style>input[type=range] { -webkit-appearance: slider-vertical; width: 20px; height: 175px; padding: 0 5px; } div{display:inline-block;}</style></head><body><div style=\"display:block;\"><label for=\"userPassword\">Пароль: </label><input id=\"userPassword\" type=\"password\"></div><div id=\"main\"></div><div style=\"display:inline-block;\"></div></div><script>function setVol() { var xhr = new XMLHttpRequest(); xhr.open(\"POST\", \"\"); xhr.setRequestHeader(\"Content-Type\", \"application/json\"); xhr.onreadystatechange = function () { var DONE = 4; var OK = 200; if (xhr.readyState === DONE) { if (xhr.status === OK) { for(var i = 0; i < 39; i++){ var responseSplit =  xhr.responseText.substring(8).replace('\"}', ' ').split(':'); document.getElementById('svol' + i).innerHTML = responseSplit[i]} } } }; var volValues=''; for(var i = 0; i < 39; i++){ \n volValues += document.getElementById('vol' + i).value + ':';}; xhr.send('{\"name\": \"' + volValues.substring(0, volValues.length-1) + '\", \"age\": ' + document.getElementById('vol0').value + ', \"pass\": \"' + document.getElementById('userPassword').value + '\"}'); }; window.onload = function(){ var vol = [" + vol + "]; var min = 0; var max = 100; var readOnly = 'disabled'; var container = document.getElementById(\"main\"); for(var i = 0; i < vol.length; i++){ var q = document.createElement('div'); q.innerHTML ='<input  type=\"range\" oninput=\"setVol()\" id=\"vol' + i + '\" name=\"vol' + i + '\" min=\"' + min + '\" max=\"' + max + '\" value=\"' + vol[i] + '\" ' + readOnly + '><span id=\"svol' + i + '\" style=\"display: block;\">' + vol[i] + '</span>'; container.appendChild(q); if ( i == 0 || i == 4 || i == 28){var tail = '<div style=\"margin:0 10\"></div>'; if (i==28) {min = -12; max = 12;}; if (i==4){readOnly = ''}; if ( i==28 && '" + eqYes + "' == '# '){ readOnly = 'disabled' }; var tailElement = document.createElement('div'); tailElement.innerHTML = tail; container.appendChild(tailElement);}; } document.getElementById('vol0').disabled = false; }; if ( '" + eqYes + "' == '# '){ document.body.innerHTML += '<div>Для управления эквалайзером добавьте EQ:YES в .rm<div>'; }</script></body></html>"
 
               complete(HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, html)))
             },
@@ -155,6 +155,10 @@ trait UserRoutes extends JsonSupport {
                     }
                     printToFile(new File(filenameTmpNewJingl)) { p =>
                       p.print(volSplit(0) + ":" + volSplit(3) + ":" + volSplit(4))
+                    }
+
+                    printToFile(new File(filenameVolsOfDay)) { p =>
+                      for { x <- 0 to 23 } p.println("%02d".format(x) + ":00:00;" + volSplit(x + 5))
                     }
 
                     printToFile(new File(filenameEq)) { p =>
