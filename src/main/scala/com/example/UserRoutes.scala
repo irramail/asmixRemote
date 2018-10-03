@@ -44,7 +44,7 @@ trait UserRoutes extends JsonSupport {
 
   printToFile(new File("/tmp/eqPipe.sh")) { p =>
     p.println(eqYes + "BG=`ps aux | grep bgmpfifo | grep mplayer | wc -l`")
-    p.println(eqYes + "test 0 -eq \"$BG\" && echo 'af equalizer='`cat ~/eq` > /home/uid0001/mpfifo || echo 'af equalizer='`cat ~/eq` > /home/uid0001/bgmpfifo")
+    p.println(eqYes + "if [ 1 -eq `ps aux | grep mpfifo | grep mplayer | wc -l` ] ; then test 0 -eq \"$BG\" && echo 'af equalizer='`cat ~/eq` > /home/uid0001/mpfifo || echo 'af equalizer='`cat ~/eq` > /home/uid0001/bgmpfifo ; fi")
     p.println("echo '<RUNTIME>'`date --rfc-3339=ns | head -c 19`'</RUNTIME><TEXT>Изменение локальных настроек: EQ: '`cat ~/eq`', MUSIC_VOL: '`cat ~/task/MUSIC_VOL`', JINGL_VOL: '`cat ~/task/JINGL_VOL`'</TEXT>' > ~/task/REPORTED/asmixRemote")
   }
   val resultEqSh = Process("chmod +x /tmp/eqPipe.sh").!!
@@ -75,7 +75,7 @@ trait UserRoutes extends JsonSupport {
   } catch {
     case e: Exception => defaultValue
   }
-
+  /*
   val tmpMusicVol = getVol(filenameMusic, "0:0:0").split(":")
   val musicVol = if (tmpMusicVol.length == 3) tmpMusicVol else Array.fill(3)("0")
 
@@ -90,7 +90,7 @@ trait UserRoutes extends JsonSupport {
   val volsOfDay = (volsOfDayLines map (tv => ", " + tv.split(";")(1))).mkString
 
   val eq: String = getVol(filenameEq, "0:0:0:0:0:0:0:0:0:0").replace(':', ',')
-
+*/
   //#user-routes-class
 
   // we leave these abstract, since they will be provided by the App
@@ -114,6 +114,21 @@ trait UserRoutes extends JsonSupport {
         pathEnd {
           concat(
             get {
+              val tmpMusicVol = getVol(filenameMusic, "0:0:0").split(":")
+              val musicVol = if (tmpMusicVol.length == 3) tmpMusicVol else Array.fill(3)("0")
+
+              val tmpJinglVol = getVol(filenameJingl, "0:0:0").split(":")
+              val jinglVol = if (tmpJinglVol.length == 3) tmpJinglVol else Array.fill(3)("0")
+
+              val volsOfDayLines = try {
+                Source.fromFile(filenameVolsOfDay).getLines.toArray filter (_.contains(";"))
+              } catch {
+                case e: Exception => (0 to 23).toArray.map("%02d".format(_) + ":00:00;0")
+              }
+              val volsOfDay = (volsOfDayLines map (tv => ", " + tv.split(";")(1))).mkString
+
+              val eq: String = getVol(filenameEq, "0:0:0:0:0:0:0:0:0:0").replace(':', ',')
+
               /*              val users: Future[Users] =
                 (userRegistryActor ? GetUsers).mapTo[Users]
 */
@@ -179,28 +194,28 @@ trait UserRoutes extends JsonSupport {
       //#users-get-post
       //#users-get-delete
       /*
-        path(Segment) { name =>
-          concat(
-            get {
-              //#retrieve-user-info
-              val maybeUser: Future[Option[User]] =
-                (userRegistryActor ? GetUser(name)).mapTo[Option[User]]
-              rejectEmptyResponse {
-                complete(maybeUser)
-              }
-              //#retrieve-user-info
-            },
-            delete {
-              //#users-delete-logic
-              val userDeleted: Future[ActionPerformed] =
-                (userRegistryActor ? DeleteUser(name)).mapTo[ActionPerformed]
-              onSuccess(userDeleted) { performed =>
-                //log.info("Deleted user [{}]: {}", name, performed.description)
-                complete((StatusCodes.OK, performed))
-              }
-              //#users-delete-logic
-            })
-        }*/ )
+          path (Segment) { name =>
+            concat(
+              get {
+                //#retrieve-user-info
+                val maybeUser: Future[Option[User]] =
+                  (userRegistryActor ? GetUser(name)).mapTo[Option[User]]
+                rejectEmptyResponse {
+                  complete(maybeUser)
+                }
+                //#retrieve-user-info
+              },
+              delete {
+                //#users-delete-logic
+                val userDeleted: Future[ActionPerformed] =
+                  (userRegistryActor ? DeleteUser(name)).mapTo[ActionPerformed]
+                onSuccess(userDeleted) { performed =>
+                  //log.info("Deleted user [{}]: {}", name, performed.description)
+                  complete((StatusCodes.OK, performed))
+                }
+                //#users-delete-logic
+              })
+          }*/ )
       //#users-get-delete
     }
   //#all-routes
